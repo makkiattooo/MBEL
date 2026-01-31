@@ -1,4 +1,4 @@
-# MBEL (Modern Billed-English Language)
+# MBEL
 
 > **"Stop fighting with JSON. Start coding your localization."**
 
