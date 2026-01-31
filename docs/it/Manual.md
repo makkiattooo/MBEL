@@ -163,7 +163,7 @@ I metadati sono memorizzati nel campo `__ai` dell'oggetto compilato. Non influen
 ### 4.2 Inizializzazione
 
 ```go
-import "github.com/yourusername/mbel"
+import "github.com/makkiattooo/MBEL"
 
 func init() {
     mbel.Init("./locales", mbel.Config{

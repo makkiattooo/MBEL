@@ -1,5 +1,10 @@
 # MBEL Changelog
 
+## [1.2.1] - 2026-01-31
+### Fixed
+- **Module Path**: Corrected `go.mod` and all internal imports to match the official GitHub repository (`github.com/makkiattooo/MBEL`). This fixes `go get` compatibility.
+- **Documentation**: Updated all 9 localized manuals with the correct installation paths.
+
 ## [1.2.0] - 2026-01-31
 ### Added
 - **Global Documentation**: Full technical suites for 9 languages (EN, PL, DE, FR, ES, IT, RU, ZH, JA).

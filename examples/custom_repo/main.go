@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/yourusername/mbel"
+	mbel "github.com/makkiattooo/MBEL"
 )
 
 // InMemoryRepository simulates loading translations from a database or API

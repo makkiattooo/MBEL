@@ -159,7 +159,7 @@ greeting(gender) {
 ### 4.2 初期化
 
 ```go
-import "github.com/yourusername/mbel"
+import "github.com/makkiattooo/MBEL"
 
 func init() {
     mbel.Init("./locales", mbel.Config{

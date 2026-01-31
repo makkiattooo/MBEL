@@ -87,12 +87,12 @@ MBEL is built for Go developers by Go developers.
 
 ### Installation
 ```bash
-go get github.com/yourusername/mbel
+go get github.com/makkiattooo/MBEL
 ```
 
 ### Professional Integration
 ```go
-import "github.com/yourusername/mbel"
+import "github.com/makkiattooo/MBEL"
 
 func main() {
     // 1. Production-ready setup with Hot-Reload
