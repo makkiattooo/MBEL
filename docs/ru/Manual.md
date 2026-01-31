@@ -107,7 +107,7 @@ items_ru(n) {
 ### 4.2 Инициализация
 
 ```go
-import "github.com/yourusername/mbel"
+import "github.com/makkiattooo/MBEL"
 
 func init() {
     mbel.Init("./locales", mbel.Config{

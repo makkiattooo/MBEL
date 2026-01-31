@@ -103,7 +103,7 @@ items_zh(n) {
 ### 4.2 初始化
 
 ```go
-import "github.com/yourusername/mbel"
+import "github.com/makkiattooo/MBEL"
 
 func init() {
     mbel.Init("./locales", mbel.Config{

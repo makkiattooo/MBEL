@@ -67,7 +67,7 @@ submit_btn = "Enviar"
 ### 3.1 Instalación
 
 ```bash
-go install github.com/yourusername/mbel/cmd/mbel@latest
+go install github.com/makkiattooo/MBEL/cmd/mbel@latest
 ```
 
 ### 3.2 Comandos
@@ -92,7 +92,7 @@ go install github.com/yourusername/mbel/cmd/mbel@latest
 ### 4.2 Inicialización
 
 ```go
-import "github.com/yourusername/mbel"
+import "github.com/makkiattooo/MBEL"
 
 func init() {
     mbel.Init("./locales", mbel.Config{

@@ -138,7 +138,7 @@ submit_btn = "Zatwierdź"
 ### 3.1 Instalacja
 
 ```bash
-go install github.com/yourusername/mbel/cmd/mbel@latest
+go install github.com/makkiattooo/MBEL/cmd/mbel@latest
 ```
 
 ### 3.2 Opis Poleceń

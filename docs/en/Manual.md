@@ -152,7 +152,7 @@ The `mbel` binary provides a suite of tools for the entire lifecycle.
 ### 3.1 Installation
 
 ```bash
-go install github.com/yourusername/mbel/cmd/mbel@latest
+go install github.com/makkiattooo/MBEL/cmd/mbel@latest
 ```
 
 ### 3.2 Commands Reference
@@ -208,7 +208,7 @@ The Go SDK is thread-safe, fast, and production-ready.
 
 **Standard (File-based):**
 ```go
-import "github.com/yourusername/mbel"
+import "github.com/makkiattooo/MBEL"
 
 func init() {
     // Loads all .mbel files from ./locales
