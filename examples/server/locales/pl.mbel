@@ -1,0 +1,14 @@
+title = "Serwer Demo MBEL"
+
+greeting(gender) {
+    [male] => "Witaj Panie {name}"
+    [female] => "Witaj Pani {name}"
+    [other] => "Witaj {name}"
+}
+
+files_count(n) {
+    [one] => "Masz jeden dokument."
+    [few] => "Masz {n} dokumenty."
+    [many] => "Masz {n} dokumentów."
+    [other] => "Masz {n} dokumentów."
+}

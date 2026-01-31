@@ -1,0 +1,38 @@
+# Gender Selection Example
+# Logic blocks for gender-specific text
+
+@lang: en
+@namespace: gender
+
+# Gender selection (male/female/other)
+welcome_message(gender) {
+    [male] => "Welcome back, sir!"
+    [female] => "Welcome back, madam!"
+    [other] => "Welcome back!"
+}
+
+# Pronoun selection
+pronoun_subject(gender) {
+    [male] => "he"
+    [female] => "she"
+    [other] => "they"
+}
+
+pronoun_object(gender) {
+    [male] => "him"
+    [female] => "her"
+    [other] => "them"
+}
+
+pronoun_possessive(gender) {
+    [male] => "his"
+    [female] => "her"
+    [other] => "their"
+}
+
+# Example with placeholder
+profile_updated(gender) {
+    [male] => "He updated his profile"
+    [female] => "She updated her profile"
+    [other] => "They updated their profile"
+}

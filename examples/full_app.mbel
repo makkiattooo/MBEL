@@ -1,0 +1,66 @@
+# Full Application Example
+# Realistic localization for a fitness app
+
+@lang: pl
+@namespace: fitness_app
+
+[navigation]
+home = "Strona główna"
+workouts = "Treningi"
+progress = "Postępy"
+settings = "Ustawienia"
+
+[workout]
+# AI_Context: Header when starting a workout session
+# AI_Tone: Energetic, motivating
+start_header = "Czas na trening!"
+
+# AI_Context: Button to begin exercise
+# AI_Tone: Action-oriented
+begin_exercise = "Zaczynamy"
+
+# Pluralization for completed reps
+reps_done(n) {
+    [0] => "Żadne powtórzenie"
+    [one] => "1 powtórzenie"
+    [few] => "{n} powtórzenia"
+    [many] => "{n} powtórzeń"
+}
+
+# Range for intensity
+intensity(level) {
+    [1..3] => "Lekki"
+    [4..6] => "Średni"
+    [7..9] => "Intensywny"
+    [10] => "Maksymalny!"
+}
+
+[progress]
+# AI_Context: Widget showing streak of consecutive workout days
+streak_label = "Twoja seria"
+
+streak_days(n) {
+    [0] => "Zacznij dzisiaj!"
+    [one] => "1 dzień"
+    [few] => "{n} dni z rzędu"
+    [many] => "{n} dni z rzędu"
+}
+
+# AI_Context: Motivational message when user breaks personal record
+# AI_Tone: Celebratory, exciting
+new_record = "Nowy rekord! 🎉"
+
+[settings]
+# AI_Context: Toggle for push notifications
+notifications_label = "Powiadomienia"
+
+# AI_Context: Option to enable dark mode
+dark_mode = "Tryb ciemny"
+
+# AI_Context: Account deletion warning
+# AI_Tone: Serious, clear
+# AI_Constraints: Mention data loss
+delete_warning = """
+Usunięcie konta jest nieodwracalne.
+Wszystkie Twoje dane treningowe zostaną utracone.
+"""

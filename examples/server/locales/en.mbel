@@ -1,0 +1,12 @@
+title = "MBEL Demo Server"
+
+greeting(gender) {
+    [male] => "Hello Mr. {name}"
+    [female] => "Hello Ms. {name}"
+    [other] => "Hello {name}"
+}
+
+files_count(n) {
+    [one] => "You have one document."
+    [other] => "You have {n} documents."
+}

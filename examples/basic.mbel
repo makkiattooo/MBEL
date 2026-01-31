@@ -1,0 +1,19 @@
+# Basic MBEL Example
+# Simple key-value strings
+
+@lang: en
+@namespace: basic
+
+# Simple strings
+app_name = "My Application"
+version = "1.0.0"
+
+# With AI annotation for context
+# AI_Context: Displayed in browser tab
+page_title = "Welcome to My App"
+
+# Multiline
+disclaimer = """
+By using this app, you agree to our
+Terms of Service and Privacy Policy.
+"""

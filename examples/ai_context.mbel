@@ -1,0 +1,31 @@
+# AI Annotations Showcase
+# The killer feature of MBEL
+
+@lang: en
+@namespace: ai_showcase
+
+# AI annotations provide context for translation tools
+# They are parsed into structured data, not just comments
+
+# AI_Context: Primary call-to-action button on landing page hero section
+# AI_Tone: Exciting, action-oriented
+# AI_Constraints: Maximum 3 words, no "click here"
+# AI_Examples: "Get Started", "Try Free", "Join Now"
+cta_button = "Start Building"
+
+# AI_Context: Error message shown when user enters invalid email format
+# AI_Tone: Helpful, not accusatory
+email_error = "Please enter a valid email address"
+
+# AI_Context: Success message after completing onboarding
+# AI_Tone: Celebratory, warm
+onboarding_complete = "You're all set! Let's dive in."
+
+# AI_Context: Tooltip for settings gear icon
+# AI_Tone: Neutral, descriptive
+settings_tooltip = "Application settings"
+
+# AI_Context: Confirmation dialog before deleting user data
+# AI_Tone: Serious, clear consequences
+# AI_Constraints: Must mention data loss is permanent
+delete_confirm = "This will permanently delete your data. Are you sure?"

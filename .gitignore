@@ -1,0 +1,29 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/mbel/
+/mbel
+
+# Test artifacts
+tests/
+*.out
+*.test
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Dependency directories (if vendoring is used)
+vendor/
+
+# MBEL specific
+examples/server/server.exe
+examples/server/server
