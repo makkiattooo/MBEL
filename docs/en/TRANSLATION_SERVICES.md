@@ -1,52 +1,479 @@
-# Translation Services Integration
+# Translation Services Integration Guide
 
-## Overview
-
-MBEL can integrate with professional translation services and platforms for automated or professional human translation of your content.
+This guide covers integrating MBEL with automated translation services like Google Translate, DeepL, and AWS Translate for efficient multi-language support.
 
 ---
 
-## Integration Patterns
+## Overview
 
-### 1. Export for Professional Translation
+MBEL complements automated translation services by providing:
+1. **Structure** — Define translation formats and validate content
+2. **Caching** — Avoid repeated API calls for the same keys
+3. **Fallbacks** — Handle missing translations gracefully
+4. **Post-processing** — Fix AI translation issues and maintain consistency
 
-Export your base language translations to standard formats for CAT (Computer-Assisted Translation) tools:
+---
+
+## 1. Google Cloud Translation
+
+### Setup
 
 ```bash
-# Export to XLIFF (future feature)
-mbel export --format=xliff locales/en.mbel -o translations.xliff
+# Install Google Cloud client
+go get cloud.google.com/go/translate
 
-# For professional translators who use:
-# - memoQ
-# - Trados
-# - Phrase (formerly Memsource)
-# - Crowdin
+# Configure credentials
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/key.json"
 ```
 
-### 2. API-Based Translation
-
-Call LLM APIs with MBEL context:
+### Basic Integration
 
 ```go
 package main
 
 import (
-	"fmt"
-	"github.com/sashabaranov/go-openai"
-	"github.com/makkiattooo/MBEL"
+	"context"
+	"cloud.google.com/go/translate"
+	"github.com/makkiattooo/MBEL/pkg/mbel"
 )
 
-type AITranslator struct {
-	client *openai.Client
-	m      *mbel.Manager
-}
-
-func (t *AITranslator) Translate(sourceKey, targetLang string) (string, error) {
-	// 1. Get source translation
-	source, err := t.m.Get("en", sourceKey, nil)
+func translateWithGoogle(text, targetLang string) (string, error) {
+	ctx := context.Background()
+	
+	client, err := translate.NewClient(ctx)
 	if err != nil {
 		return "", err
 	}
+	defer client.Close()
+
+	resp, err := client.Translate(ctx, []string{text}, &translate.Options{
+		TargetLanguage: targetLang,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return resp[0].TranslatedText, nil
+}
+```
+
+### Cache Integration
+
+```go
+type TranslationCache struct {
+	manager   *mbel.Manager
+	cache     map[string]string
+}
+
+func (tc *TranslationCache) Get(lang, key string) (string, error) {
+	// First, check if already in compiled MBEL
+	existing := tc.manager.Get(lang, key, nil)
+	if existing != "" {
+		return existing, nil
+	}
+
+	// Cache key: lang + key
+	cacheKey := lang + ":" + key
+	if cached, ok := tc.cache[cacheKey]; ok {
+		return cached, nil
+	}
+
+	// Get English source and translate
+	source := tc.manager.Get("en", key, nil)
+	if source == "" {
+		return "", fmt.Errorf("key not found: %s", key)
+	}
+
+	translated, err := translateWithGoogle(source, lang)
+	if err != nil {
+		return "", err
+	}
+
+	// Cache result
+	tc.cache[cacheKey] = translated
+	return translated, nil
+}
+```
+
+---
+
+## 2. DeepL Integration
+
+DeepL provides high-quality translations for European languages.
+
+### Setup
+
+```bash
+go get github.com/DeepLcom/deepl-go
+```
+
+### Implementation
+
+```go
+import (
+	"github.com/DeepLcom/deepl-go"
+	"os"
+)
+
+func translateWithDeepL(text, targetLang string) (string, error) {
+	auth := deepl.NewAuthenticator(os.Getenv("DEEPL_AUTH_KEY"))
+	translator := deepl.NewTranslator(auth)
+
+	result, err := translator.TranslateText(
+		context.Background(),
+		text,
+		"EN", // source language
+		"DE", // target language
+	)
+	if err != nil {
+		return "", err
+	}
+
+	return result.Text, nil
+}
+```
+
+### Cost Optimization
+
+```go
+// Batch API calls to reduce costs
+func batchTranslate(texts []string, targetLang string) ([]string, error) {
+	results := make([]string, len(texts))
+	
+	for i, text := range texts {
+		// Rate limit: 50 requests/minute for free tier
+		if i > 0 && i%10 == 0 {
+			time.Sleep(1 * time.Second)
+		}
+		
+		result, err := translateWithDeepL(text, targetLang)
+		if err != nil {
+			return nil, err
+		}
+		results[i] = result
+	}
+	
+	return results, nil
+}
+```
+
+---
+
+## 3. AWS Translate
+
+### Setup
+
+```bash
+go get github.com/aws/aws-sdk-go-v2/service/translate
+```
+
+### Implementation
+
+```go
+import (
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/translate"
+	"github.com/aws/aws-sdk-go-v2/aws"
+)
+
+func translateWithAWS(text, targetLang string) (string, error) {
+	cfg, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		return "", err
+	}
+
+	client := translate.NewFromConfig(cfg)
+	
+	resp, err := client.TranslateText(context.Background(), &translate.TranslateTextInput{
+		Text:               aws.String(text),
+		SourceLanguageCode: aws.String("en"),
+		TargetLanguageCode: aws.String(targetLang),
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return *resp.TranslatedText, nil
+}
+```
+
+---
+
+## 4. Crowdin Integration
+
+Sync translations with Crowdin platform:
+
+```bash
+#!/bin/bash
+# sync-crowdin.sh
+
+# 1. Upload source (English)
+curl -X POST https://api.crowdin.com/api/v2/projects/PROJECT_ID/files \
+  -H "Authorization: Bearer $CROWDIN_TOKEN" \
+  -F "file=@locales/en.mbel"
+
+# 2. Download translated files (after translation)
+curl https://api.crowdin.com/api/v2/projects/PROJECT_ID/translations/exports \
+  -H "Authorization: Bearer $CROWDIN_TOKEN" \
+  -o translations.zip
+
+# 3. Extract and validate
+unzip translations.zip -d temp_translations/
+for file in temp_translations/*.mbel; do
+	mbel lint "$file" || echo "Validation failed: $file"
+done
+
+# 4. Integrate
+cp temp_translations/*.mbel locales/
+```
+
+---
+
+## 5. Automated Workflow
+
+### Generate MBEL Files from API Response
+
+```go
+func generateMBELFromTranslations(translations map[string]string, lang string) error {
+	content := fmt.Sprintf("@namespace: app\n@lang: %s\n\n", lang)
+	
+	for key, value := range translations {
+		// Escape special characters
+		value = strings.ReplaceAll(value, `"`, `\"`)
+		value = strings.ReplaceAll(value, "\n", `\n`)
+		content += fmt.Sprintf("%s = %q\n", key, value)
+	}
+
+	return ioutil.WriteFile(fmt.Sprintf("locales/%s.mbel", lang), []byte(content), 0644)
+}
+
+// Usage: Translate all languages
+func main() {
+	// 1. Get English base
+	baseTranslations := map[string]string{
+		"greeting": "Welcome, {name}!",
+		"farewell": "Goodbye!",
+	}
+
+	// 2. Translate to all target languages
+	targetLangs := []string{"de", "fr", "es", "it", "ja"}
+	for _, lang := range targetLangs {
+		translated := make(map[string]string)
+		for key, val := range baseTranslations {
+			result, _ := translateWithGoogle(val, lang)
+			translated[key] = result
+		}
+		generateMBELFromTranslations(translated, lang)
+	}
+
+	// 3. Compile and test
+	exec.Command("mbel", "compile", "locales/", "-o", "dist/translations.json").Run()
+	exec.Command("go", "test", "./...").Run()
+}
+```
+
+---
+
+## 6. Quality Assurance
+
+### Post-Translation Validation
+
+```go
+func validateTranslations(filePath string) error {
+	// 1. Check syntax
+	output, err := exec.Command("mbel", "lint", filePath).Output()
+	if err != nil {
+		return fmt.Errorf("lint failed: %s", output)
+	}
+
+	// 2. Check variable consistency
+	content, _ := ioutil.ReadFile(filePath)
+	fileContent := string(content)
+	
+	// 3. Check no hardcoded secrets
+	if strings.Contains(fileContent, "sk-") || 
+	   strings.Contains(fileContent, "password") ||
+	   strings.Contains(fileContent, "secret") {
+		return fmt.Errorf("suspected secrets in translations")
+	}
+
+	// 4. Check placeholder consistency with English
+	enContent, _ := ioutil.ReadFile("locales/en.mbel")
+	enPlaceholders := countPlaceholders(string(enContent))
+	filePlaceholders := countPlaceholders(fileContent)
+	
+	if enPlaceholders != filePlaceholders {
+		return fmt.Errorf("placeholder mismatch")
+	}
+
+	return nil
+}
+
+func countPlaceholders(content string) map[string]int {
+	counts := make(map[string]int)
+	re := regexp.MustCompile(`\{([^}]+)\}`)
+	for _, match := range re.FindAllStringSubmatch(content, -1) {
+		counts[match[1]]++
+	}
+	return counts
+}
+```
+
+### A/B Testing
+
+```go
+// Compare translations from different services
+type TranslationComparison struct {
+	Key     string
+	English string
+	Google  string
+	DeepL   string
+	AWS     string
+}
+
+func compareTranslations(key, english string) TranslationComparison {
+	google, _ := translateWithGoogle(english, "de")
+	deepl, _ := translateWithDeepL(english, "de")
+	aws, _ := translateWithAWS(english, "de")
+
+	return TranslationComparison{
+		Key:     key,
+		English: english,
+		Google:  google,
+		DeepL:   deepl,
+		AWS:     aws,
+	}
+}
+```
+
+---
+
+## 7. Cost Analysis
+
+### Typical Costs (Per 1 Million Characters)
+
+| Service | Cost | Pros | Cons |
+|---------|------|------|------|
+| **Google Translate** | $20 | High quality, many languages | Expensive for scale |
+| **DeepL API** | $15 | Excellent quality (EU) | Limited language pairs |
+| **AWS Translate** | $15 | Good quality, AWS integration | Variable by language |
+| **Human Translators** | $100-500 | Best quality, cultural aware | Slow, expensive |
+
+**Optimization strategy:**
+1. Use automated services for initial translations
+2. Have humans review and correct key content
+3. Cache results to avoid re-translation
+4. Use cheaper services for internal-only strings
+
+---
+
+## 8. Workflow Examples
+
+### Development Workflow
+
+```bash
+# 1. Create English base
+echo 'greeting = "Hello, {name}!"' > locales/en.mbel
+
+# 2. Auto-translate
+go run translate.go --lang de,fr,es
+
+# 3. Review in editor  
+code locales/
+
+# 4. Compile
+mbel compile locales/ -o dist/translations.json
+
+# 5. Test
+go test ./...
+
+# 6. Commit
+git add locales/ dist/
+git commit -m "feat: add German, French, Spanish translations"
+```
+
+### Production Workflow (CI/CD)
+
+```yaml
+# .github/workflows/translate.yml
+name: Auto-Translate
+on:
+  push:
+    paths:
+      - 'locales/en.mbel'
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Run translation
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+        run: |
+          go run cmd/translate.go --langs de,fr,es,it,ja
+      
+      - name: Validate
+        run: |
+          mbel lint locales/
+          mbel compile locales/ -o dist/translations.json
+      
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v4
+        with:
+          commit-message: "chore: auto-translated strings"
+          title: "Auto-translated new strings"
+          labels: "translation"
+```
+
+---
+
+## 9. Troubleshooting
+
+### Issue: "Over quota"
+
+**Solution:**
+- Use local caching
+- Batch requests together
+- Switch to cheaper service tier
+- Reduce update frequency
+
+### Issue: "Quality is poor"
+
+**Solution:**
+- Use human proofreaders
+- Post-process with regex rules
+- Use DeepL for better quality on EU languages
+- Add AI context annotations
+
+### Issue: "Inconsistent terminology"
+
+**Solution:**
+- Create glossary/terminology database
+- Use service glossary features
+- Implement post-processing normalization
+- Use MBEL AI annotations for guidance
+
+---
+
+## 10. Best Practices
+
+1. **Always use caching** — Avoid repeated API calls
+2. **Validate output** — Use MBEL linting after translation
+3. **Version translations** — Track service/version used
+4. **Monitor costs** — Set budget alerts on API accounts
+5. **Have fallbacks** — Always fall back to English if translation fails
+6. **Human review** — Especially for user-facing text
+7. **Test thoroughly** — Include translated strings in test coverage
+8. **Document context** — Use MBEL AI annotations
+
+---
+
+See also:
+- [SECURITY.md](SECURITY.md) — Protect your API keys
+- [QUICKSTART.md](QUICKSTART.md) — Basic usage
+- [ARCHITECTURE.md](ARCHITECTURE.md) — How Manager handles multiple languages
 
 	// 2. Get AI context
 	annotations := t.extractAnnotations(sourceKey)

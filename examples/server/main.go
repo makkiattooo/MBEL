@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	mbel "github.com/makkiattooo/MBEL"
+	mbel "github.com/makkiattooo/MBEL/pkg/mbel"
 )
 
 func main() {

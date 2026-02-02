@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	mbel "github.com/makkiattooo/MBEL"
+	mbel "github.com/makkiattooo/MBEL/pkg/mbel"
 )
 
 const version = "1.2.0"

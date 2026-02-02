@@ -1,18 +1,19 @@
-# MBEL Документация — Полный пакет (Русский)
+# Документация MBEL — Русский полный набор
 
-## Основные
-- [Manual](Manual.md)
-- [FAQ](FAQ.md)
-- [TIPS](TIPS.md)
-- [COMPARISON](COMPARISON.md)
+Эта страница индексирует всю русскую документацию MBEL. Используйте эти страницы как основной справочник.
 
-## Для разработчиков
-- Quick Start: [EN Quick Start](../en/QUICKSTART.md)
-- AI Annotations: [EN](../en/AI_ANNOTATIONS.md)
-- Architecture: [EN](../en/ARCHITECTURE.md)
-- Security: [EN](../en/SECURITY.md)
-- Sourcemap: [EN](../en/SOURCEMAP.md)
-- Deployment: [EN](../en/DEPLOYMENT.md)
-- Translation Services: [EN](../en/TRANSLATION_SERVICES.md)
+## Основные руководства
+- [Руководство](Manual.md) — Полное руководство по языку и справочник
+- [Часто задаваемые вопросы](FAQ.md) — Часто задаваемые вопросы
+- [Советы](TIPS.md) — Краткие советы и лучшие практики
+- [Сравнение](COMPARISON.md) — Сравнение с другими подходами i18n
 
-Если вы хотите помочь с переводом — добавьте файлы в `docs/ru/` и обновите этот SUITE.
+## Руководства для разработчиков
+- [Быстрый старт](QUICKSTART.md) — Быстрый старт за 5 минут
+- [ARCHITECTURE](../en/ARCHITECTURE.md) — Основная архитектура и точки расширения (EN)
+- [SECURITY](../en/SECURITY.md) — Безопасность и руководство XSS (EN)
+- [DEVELOPMENT](../en/DEVELOPMENT.md) — Руководство разработчика (EN)
+
+## Как помочь
+
+Если документ отсутствует на вашем языке, создайте переведенную копию в `docs/<lang>/` и добавьте запись в SUITE.md вашего языка.

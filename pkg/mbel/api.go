@@ -15,11 +15,11 @@ type Vars map[string]interface{}
 
 // Metrics holds basic telemetry for runtime
 type Metrics struct {
-	mu             sync.RWMutex
-	GetCalls       int64 // Total calls to Get
-	InterpolateOps int64 // Total interpolation operations
-	CacheHits      int64 // Cache hits (future)
-	CacheMisses    int64 // Cache misses (future)
+	mu              sync.RWMutex
+	GetCalls        int64 // Total calls to Get
+	InterpolateOps  int64 // Total interpolation operations
+	CacheHits       int64 // Cache hits (future)
+	CacheMisses     int64 // Cache misses (future)
 }
 
 // Global metrics instance
@@ -122,10 +122,10 @@ func recordInterpolate() {
 // GetMetrics returns a copy of current metrics
 func GetMetrics() map[string]int64 {
 	return map[string]int64{
-		"get_calls":       atomic.LoadInt64(&metrics.GetCalls),
-		"interpolate_ops": atomic.LoadInt64(&metrics.InterpolateOps),
-		"cache_hits":      atomic.LoadInt64(&metrics.CacheHits),
-		"cache_misses":    atomic.LoadInt64(&metrics.CacheMisses),
+		"get_calls":        atomic.LoadInt64(&metrics.GetCalls),
+		"interpolate_ops":  atomic.LoadInt64(&metrics.InterpolateOps),
+		"cache_hits":       atomic.LoadInt64(&metrics.CacheHits),
+		"cache_misses":     atomic.LoadInt64(&metrics.CacheMisses),
 	}
 }
 
