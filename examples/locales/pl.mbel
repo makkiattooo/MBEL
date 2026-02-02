@@ -1,0 +1,43 @@
+# Polish localization for e-commerce example
+
+[navigation]
+home = "Strona główna"
+products = "Produkty"
+cart = "Koszyk"
+checkout = "Kasa"
+account = "Moje konto"
+logout = "Wyloguj się"
+
+[products]
+total_items(n) {
+    [one]   => "Znaleziono 1 produkt"
+    [few]   => "Znaleziono {n} produkty"
+    [other] => "Znaleziono {n} produktów"
+}
+
+add_to_cart = "Dodaj do koszyka"
+out_of_stock = "Brak na magazynie"
+price_label = "Cena: {price} zł"
+
+[cart]
+empty_message = "Twój koszyk jest pusty"
+total_price = "Razem: {total} zł"
+proceed_checkout = "Przejdź do kasy"
+
+items_in_cart(count) {
+    [one]   => "1 przedmiot w koszyku"
+    [few]   => "{count} przedmioty w koszyku"
+    [other] => "{count} przedmiotów w koszyku"
+}
+
+[errors]
+something_wrong = "Coś poszło nie tak. Spróbuj ponownie."
+invalid_email = "Podaj prawidłowy adres e-mail."
+password_too_short = "Hasło musi mieć co najmniej 8 znaków."
+field_required(field) {
+    [other] => "{field} jest wymagane"
+}
+
+[success]
+order_placed = "Twoje zamówienie zostało złożone pomyślnie!"
+account_created = "Witaj! Twoje konto zostało utworzone."

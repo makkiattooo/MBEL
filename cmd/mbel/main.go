@@ -20,6 +20,14 @@ import (
 
 const version = "1.2.0"
 
+type compileResult struct {
+	file      string
+	namespace string
+	data      map[string]interface{}
+	program   *mbel.Program // Store program for sourcemap
+	err       error
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -164,7 +172,7 @@ items_count(n) {
 	fmt.Println("\n🎉 You are all set!")
 	fmt.Println("\nNext steps:")
 	fmt.Println("1. Install the Go SDK:")
-	fmt.Println("   go get github.com/yourusername/mbel")
+	fmt.Println("   go get github.com/makkiattooo/mbel")
 	fmt.Println("\n2. Initialize in your code:")
 	fmt.Printf("   mbel.Init(\"./%s\", mbel.Config{Watch: true})\n", dir)
 	fmt.Println("\n3. Run watch mode during development:")
@@ -380,6 +388,7 @@ func compileCmd(args []string) {
 	pretty := fs.Bool("pretty", true, "Pretty-print JSON")
 	parallel := fs.Int("j", runtime.NumCPU(), "Parallel workers")
 	withNamespace := fs.Bool("ns", true, "Derive namespace from folder path")
+	sourcemap := fs.Bool("sourcemap", false, "Generate sourcemap.json alongside compiled output")
 	fs.Parse(args)
 
 	paths := fs.Args()
@@ -412,13 +421,6 @@ func compileCmd(args []string) {
 	}
 
 	// Parallel compilation
-	type compileResult struct {
-		file      string
-		namespace string
-		data      map[string]interface{}
-		err       error
-	}
-
 	results := make(chan compileResult, len(files))
 	fileChan := make(chan string, len(files))
 
@@ -468,6 +470,8 @@ func compileCmd(args []string) {
 				}
 
 				res.data = resultMap
+				// Store program for sourcemap generation
+				res.program = program
 				results <- res
 			}
 		}()
@@ -485,9 +489,10 @@ func compileCmd(args []string) {
 		close(results)
 	}()
 
-	// Merge all results
+	// Merge all results & collect for sourcemap
 	merged := make(map[string]interface{})
 	hasErrors := false
+	var allResults []compileResult // Keep results for sourcemap
 
 	for res := range results {
 		if res.err != nil {
@@ -495,6 +500,8 @@ func compileCmd(args []string) {
 			hasErrors = true
 			continue
 		}
+
+		allResults = append(allResults, res) // Store for sourcemap
 
 		// Merge with namespace prefix
 		for k, v := range res.data {
@@ -527,9 +534,63 @@ func compileCmd(args []string) {
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Compiled %d files to %s\n", len(files), *output)
+
+		// Generate sourcemap if requested
+		if *sourcemap {
+			sourcemapPath := strings.TrimSuffix(*output, filepath.Ext(*output)) + ".sourcemap.json"
+			sourcemapData := generateSourcemap(allResults)
+
+			sourcemapJSON, err := json.MarshalIndent(sourcemapData, "", "  ")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error marshaling sourcemap: %v\n", err)
+				os.Exit(1)
+			}
+
+			if err := ioutil.WriteFile(sourcemapPath, sourcemapJSON, 0644); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing sourcemap: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("✓ Generated sourcemap to %s\n", sourcemapPath)
+		}
 	} else {
 		fmt.Println(string(jsonData))
 	}
+}
+
+// generateSourcemap builds a sourcemap from compilation results
+func generateSourcemap(results []compileResult) map[string]interface{} {
+	sourcemap := make(map[string]interface{})
+
+	for _, res := range results {
+		if res.program == nil {
+			continue
+		}
+
+		// Build sourcemap for this file
+		sm := mbel.BuildSourceMap(res.program, res.file)
+
+		// Add file reference to each location
+		fileMap := make(map[string]interface{})
+		for key, loc := range sm {
+			locData := map[string]interface{}{
+				"file":   loc.File,
+				"line":   loc.Line,
+				"column": loc.Column,
+			}
+			fileMap[key] = locData
+		}
+
+		// Merge with namespace prefix (same as main merge)
+		for k, v := range fileMap {
+			key := k
+			if res.namespace != "" && !strings.HasPrefix(k, "__") {
+				key = res.namespace + "." + k
+			}
+			sourcemap[key] = v
+		}
+	}
+
+	return sourcemap
 }
 
 // ============================================================================

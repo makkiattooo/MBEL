@@ -1,146 +1,62 @@
-# MBEL
+﻿# MBEL — Modern, Deterministic Localization
 
-> **"Stop fighting with JSON. Start coding your localization."**
+MBEL is a domain-specific language and toolset for internationalization that treats translations as code. It reduces ambiguity, prevents common CI failures, and provides deterministic context for automated translation workflows (LLMs, CAT tools, and human reviewers).
 
-Traditional i18n (JSON, YAML, .po) is broken. It was built 20 years ago for static strings. In today's era of **dynamic apps** and **AI-driven development**, it creates more problems than it solves:
+Key goals:
+- Reduce merge conflicts and ambiguous keys
+- Provide rich, structured context for translators and LLMs
+- Offer a CI-friendly toolchain (lint, fmt, compile)
+- Support production-grade deployment and monitoring
 
-*   💥 **Merge Conflicts**: Two devs add a key to `en.json`? Enjoy the git hell.
-*   🕯️ **Zero Context**: What does `Register` mean? Is it a button? A header? A verb? A noun?
-*   🐞 **Runtime Crashes**: One missing comma in your 5000-line JSON and your production build fails.
-*   🤖 **AI Hallucinations**: Standard tools give zero guidance to LLMs, leading to terrible automated translations.
+Quick links
+- Quick Start: [docs/en/QUICKSTART.md](docs/en/QUICKSTART.md)
+- Full documentation suite (per-language): see each language "Full Suite" link below
 
-**MBEL is different.** It’s a programmable localization DSL that treats translations as code, not just data.
-
----
-
-## 📚 Documentation / Dokumentacja
-
-| Language | Core Manual | Technical Suite (FAQ/Tips/AI) |
-| :--- | :--- | :--- |
-| 🇬🇧 **English** | ✅ [Read](docs/en/Manual.md) | ✅ [Full Suite](docs/en/FAQ.md) |
-| 🇵🇱 **Polski** | ✅ [Czytaj](docs/pl/Manual.md) | ✅ [Pełny Pakiet](docs/pl/FAQ.md) |
-| 🇩🇪 **Deutsch** | ✅ [Handbuch](docs/de/Manual.md) | ✅ [Komplett](docs/de/FAQ.md) |
-| 🇫🇷 **Français** | ✅ [Manuel](docs/fr/Manual.md) | ✅ [Complet](docs/fr/FAQ.md) |
-| 🇪🇸 **Español** | ✅ [Manual](docs/es/Manual.md) | ✅ [Completo](docs/es/FAQ.md) |
-| 🇮🇹 **Italiano** | ✅ [Manuale](docs/it/Manual.md) | ✅ [Completo](docs/it/FAQ.md) |
-| 🇷🇺 **Русский** | ✅ [Руководство](docs/ru/Manual.md) | ✅ [Полный пакет](docs/ru/FAQ.md) |
-| 🇨🇳 **中文** | ✅ [官方手册](docs/zh/Manual.md) | ✅ [完整版](docs/zh/FAQ.md) |
-| 🇯🇵 **日本語** | ✅ [マニュアル](docs/ja/Manual.md) | ✅ [完全版](docs/ja/FAQ.md) |
+Supported documentation languages
+| Language | Quick Start | Manual | Full Suite |
+| :--- | :--- | :--- | :--- |
+| 🇬🇧 English | 🚀 [Quick Start](docs/en/QUICKSTART.md) | [Manual](docs/en/Manual.md) | [Full Suite](docs/en/SUITE.md) |
+| 🇵🇱 Polski | [Szybki start](docs/pl/Manual.md) | [Manual](docs/pl/Manual.md) | [Full Suite](docs/pl/SUITE.md) |
+| 🇩🇪 Deutsch | [Handbuch](docs/de/Manual.md) | [Manual](docs/de/Manual.md) | [Full Suite](docs/de/SUITE.md) |
+| 🇫🇷 Français | [Manuel](docs/fr/Manual.md) | [Manual](docs/fr/Manual.md) | [Full Suite](docs/fr/SUITE.md) |
+| 🇪🇸 Español | [Manual](docs/es/Manual.md) | [Manual](docs/es/Manual.md) | [Full Suite](docs/es/SUITE.md) |
+| 🇮🇹 Italiano | [Manuale](docs/it/Manual.md) | [Manual](docs/it/Manual.md) | [Full Suite](docs/it/SUITE.md) |
+| 🇷🇺 Русский | [Руководство](docs/ru/Manual.md) | [Manual](docs/ru/Manual.md) | [Full Suite](docs/ru/SUITE.md) |
+| 🇨🇳 中文 | [官方手册](docs/zh/Manual.md) | [Manual](docs/zh/Manual.md) | [Full Suite](docs/zh/SUITE.md) |
+| 🇯🇵 日本語 | [マニュアル](docs/ja/Manual.md) | [Manual](docs/ja/Manual.md) | [Full Suite](docs/ja/SUITE.md) |
 
 ---
 
-## 🦾 The "Killer" Feature: AI Context
+Why MBEL
 
-Most tools treat AI translation as a "black box". MBEL makes it **deterministic**. We attach metadata directly to your keys, which our CLI tools feed into LLMs to guarantee perfect translations.
+- Deterministic AI context: attach structured metadata (tone, constraints, examples) directly to keys so automated translation yields reliable outputs.
+- Programmable logic: plurals, ranges, gender and arbitrary matchers live in the DSL, not in application code.
+- CI-friendly: `mbel lint` and `mbel fmt` make translations part of your engineering workflow.
+- Production-ready: optional HTML escaping, lazy-loading of large locale sets, sourcemaps for debugging, and metrics for observability.
 
-**The MBEL Reality:**
-```mbel
-# This tells the AI precisely what to do
-@AI_Context: "Button in the header for user registration (Verb)"
-@AI_Tone: "Action-oriented, short"
-@AI_MaxLength: "12"
-register_btn = "Sign Up"
-```
+Getting started
 
-**The result?** No more "Register" (Noun) when you needed a "Register" (Verb).
-
----
-
-## 🤯 The Syntax: Logic in Data
-
-Stop building sentences in your Go/JS code. Define the logic once in MBEL, and let the runtime handle the complexity.
-
-### 1. Simple but Powerful Plurals
-```mbel
-# No more key_one, key_other mess. One key, all rules.
-cart_items(n) {
-    [one]   => "You have 1 item"
-    [other] => "You have {n} items"
-}
-```
-
-### 2. Contextual Logic (Gender/Roles/Enums)
-```mbel
-# Control logic by 'gender', interpolate dynamic 'name'
-greeting(gender) {
-    [male]   => "Welcome back, Mr. {name}"
-    [female] => "Welcome back, Ms. {name}"
-    [other]  => "Hi {name}!"
-}
-```
-
-### 3. Smart Ranges
-```mbel
-# Perfect for XP, Battery, or progress levels
-xp_level(points) {
-    [0-99]   => "Novice"
-    [100-499]=> "Warrior"
-    [other]  => "Legend"
-}
-```
-
----
-
-## 🛠 Developer UX (Go SDK)
-
-MBEL is built for Go developers by Go developers.
-
-### Installation
+Install the CLI and SDK:
 ```bash
+go install github.com/makkiattooo/MBEL/cmd/mbel@latest
 go get github.com/makkiattooo/MBEL
 ```
 
-### Professional Integration
-```go
-import "github.com/makkiattooo/MBEL"
-
-func main() {
-    // 1. Production-ready setup with Hot-Reload
-    mbel.Init("./locales", mbel.Config{
-        DefaultLocale: "en",
-        Watch:         true, // Hit save in .mbel, see changes in UI instantly
-    })
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-    // 2. Context-aware translation
-    // Uses Accept-Language middleware automatically
-    title := mbel.T(r.Context(), "title")
-    
-    // 3. Complex logic call
-    msg := mbel.T(r.Context(), "greeting", mbel.Vars{
-        "gender": "female",
-        "name":   "Anna",
-    })
-}
+Run the quickstart guide to compile example locales and generate sourcemaps:
+```bash
+mbel compile examples -o examples_out.json -sourcemap
 ```
+
+Where to go next
+
+- Read the Quick Start: [docs/en/QUICKSTART.md](docs/en/QUICKSTART.md)
+- Explore the Full Suite for your language (see table above)
+- For CI: add `mbel lint` and `mbel fmt` to pre-merge checks
+
+Contributing
+
+Contributions welcome — please follow the project's CONTRIBUTING guidelines. When contributing translations, add `SUITE.md` entries under the appropriate `docs/<lang>/` folder so users can discover localized resources.
 
 ---
 
-## 👔 Enterprise Grade: The "Bebechy"
-
-We don't just talk about Enterprise; we provide the interfaces. 
-
-### 1. Repository Pattern (No Files? No Problem!)
-If your architecture demands translations from **PostgreSQL**, **Redis**, or an external **API**, just implement the interface:
-
-```go
-type Repository interface {
-    // LoadAll returns map[language] -> map[key]value
-    LoadAll() (map[string]map[string]interface{}, error)
-}
-
-// Then swap it in one line:
-repo := NewPostgresRepository(db)
-mbel.InitWithRepo(repo, mbel.Config{})
-```
-
-### 2. CI-Ready Toolchain
-*   `mbel lint`: Integrate into your GitHub Actions. Fail builds on syntax errors or MaxLength violations.
-*   **Designed for CI**: CLI exits with non-zero codes on errors.
-*   `mbel fmt`: Consistency across the team. Like `gofmt`, but for translations.
-*   `mbel compile`: High-speed generation of JSON for your frontend. Perfect for CD pipelines.
-
----
-
-*Build with ❤️ for developers who value their sanity and production stability.*
+If you want, I will now create `SUITE.md` files for each supported language that list available docs (and point to English fallbacks where translations are missing).

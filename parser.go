@@ -40,6 +40,9 @@ func (p *Parser) nextToken() {
 }
 
 // parseAIAnnotation extracts structured data from AI_* comments
+// Supports formats like:
+// @AI_Context: "some text"
+// @AI_MaxLength: 50
 // Returns nil if comment is not an AI annotation
 func (p *Parser) parseAIAnnotation(tok Token) *AIAnnotation {
 	text := strings.TrimSpace(tok.Literal)
@@ -59,11 +62,56 @@ func (p *Parser) parseAIAnnotation(tok Token) *AIAnnotation {
 	aiType := strings.TrimPrefix(text[:colonIdx], "AI_")
 	value := strings.TrimSpace(text[colonIdx+1:])
 
+	// Handle multi-line values in curly braces
+	if strings.HasPrefix(value, "{") {
+		// Value spans multiple lines until closing }
+		// Collect lines until we find the closing }
+		lines := []string{value}
+		bracketCount := 1
+
+		for bracketCount > 0 && p.peekToken.Type != TOKEN_EOF {
+			p.nextToken() // Move to next token
+			line := p.curToken.Literal
+
+			// Count brackets
+			for _, ch := range line {
+				if ch == '{' {
+					bracketCount++
+				} else if ch == '}' {
+					bracketCount--
+				}
+			}
+
+			lines = append(lines, line)
+			if bracketCount <= 0 {
+				break
+			}
+		}
+
+		// Join all lines and parse as JSON/YAML-like
+		fullValue := strings.Join(lines, "\n")
+		value = parseMultiLineAnnotation(fullValue)
+	}
+
 	return &AIAnnotation{
 		Type:  aiType,
 		Value: value,
 		Line:  tok.Line,
 	}
+}
+
+// parseMultiLineAnnotation handles multi-line annotation values
+// Supports both JSON and simple YAML-like formats
+func parseMultiLineAnnotation(value string) string {
+	// Remove outer braces
+	value = strings.TrimSpace(value)
+	if strings.HasPrefix(value, "{") && strings.HasSuffix(value, "}") {
+		value = strings.TrimSpace(value[1 : len(value)-1])
+	}
+
+	// For now, return as-is. Could be extended to parse YAML/JSON
+	// This allows storing structured data
+	return value
 }
 
 func (p *Parser) ParseProgram() *Program {
@@ -341,6 +389,6 @@ func (p *Parser) peekTokenIs(t TokenType) bool {
 }
 
 func (p *Parser) peekError(t TokenType) {
-	msg := fmt.Sprintf("expected next token to be %s, got %s instead", t, p.peekToken.Type)
+	msg := fmt.Sprintf("expected next token to be %s, got %s instead at line %d", t, p.peekToken.Type, p.peekToken.Line)
 	p.errors = append(p.errors, msg)
 }

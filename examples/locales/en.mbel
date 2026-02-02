@@ -1,0 +1,41 @@
+# English localization for e-commerce example
+
+[navigation]
+home = "Home"
+products = "Products"
+cart = "Shopping Cart"
+checkout = "Checkout"
+account = "My Account"
+logout = "Sign Out"
+
+[products]
+total_items(n) {
+    [one]   => "1 item found"
+    [other] => "{n} items found"
+}
+
+add_to_cart = "Add to Cart"
+out_of_stock = "Out of Stock"
+price_label = "Price: ${price}"
+
+[cart]
+empty_message = "Your cart is empty"
+total_price = "Total: ${total}"
+proceed_checkout = "Proceed to Checkout"
+
+items_in_cart(count) {
+    [one]   => "1 item in cart"
+    [other] => "{count} items in cart"
+}
+
+[errors]
+something_wrong = "Something went wrong. Please try again."
+invalid_email = "Please enter a valid email address."
+password_too_short = "Password must be at least 8 characters."
+field_required(field) {
+    [other] => "{field} is required"
+}
+
+[success]
+order_placed = "Your order has been placed successfully!"
+account_created = "Welcome! Your account has been created."

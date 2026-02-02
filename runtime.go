@@ -2,23 +2,36 @@ package mbel
 
 import (
 	"fmt"
+	"html"
 	"regexp"
-	"strings"
+	"strconv"
+)
+
+var (
+	termRe = regexp.MustCompile(`\{-([a-zA-Z_][a-zA-Z0-9_-]*)\}`)
+	argRe  = regexp.MustCompile(`\{([a-zA-Z_][a-zA-Z0-9_]*)\}`)
 )
 
 // Runtime provides string resolution with interpolation
 type Runtime struct {
-	Data     map[string]interface{}
-	Terms    map[string]string
-	Language string
+	Data       map[string]interface{}
+	Terms      map[string]string
+	Language   string
+	escapeHTML bool // Enable HTML escaping for interpolated values
 }
 
 // NewRuntime creates a runtime from compiled data
 func NewRuntime(data map[string]interface{}) *Runtime {
+	return NewRuntimeWithOptions(data, false)
+}
+
+// NewRuntimeWithOptions creates a runtime with custom options
+func NewRuntimeWithOptions(data map[string]interface{}, escapeHTML bool) *Runtime {
 	r := &Runtime{
-		Data:     data,
-		Terms:    make(map[string]string),
-		Language: "en",
+		Data:       data,
+		Terms:      make(map[string]string),
+		Language:   "en",
+		escapeHTML: escapeHTML,
 	}
 
 	// Extract terms
@@ -36,8 +49,15 @@ func NewRuntime(data map[string]interface{}) *Runtime {
 	return r
 }
 
+// EscapeHTML enables or disables HTML escaping for interpolated values
+func (r *Runtime) SetEscapeHTML(escape bool) {
+	r.escapeHTML = escape
+}
+
 // Get retrieves a string by key with optional arguments for interpolation
 func (r *Runtime) Get(key string, args ...interface{}) string {
+	recordGetCall()
+
 	val, exists := r.Data[key]
 	if !exists {
 		return key // Fallback to key itself
@@ -45,6 +65,9 @@ func (r *Runtime) Get(key string, args ...interface{}) string {
 
 	switch v := val.(type) {
 	case string:
+		if len(args) > 0 {
+			return r.interpolate(v, args[0])
+		}
 		return r.interpolate(v, nil)
 	case *RuntimeBlock:
 		if len(args) > 0 {
@@ -59,12 +82,13 @@ func (r *Runtime) Get(key string, args ...interface{}) string {
 
 // interpolate replaces {placeholders} and {-term-refs}
 func (r *Runtime) interpolate(s string, arg interface{}) string {
+	recordInterpolate()
+
 	if s == "" {
 		return s
 	}
 
 	// Replace term references {-term-name}
-	termRe := regexp.MustCompile(`\{-([a-zA-Z_][a-zA-Z0-9_-]*)\}`)
 	s = termRe.ReplaceAllStringFunc(s, func(match string) string {
 		termName := match[2 : len(match)-1] // Extract "term-name" from "{-term-name}"
 		if val, exists := r.Terms[termName]; exists {
@@ -75,21 +99,37 @@ func (r *Runtime) interpolate(s string, arg interface{}) string {
 
 	// Replace argument placeholder {n}, {count}, etc.
 	if arg != nil {
-		argRe := regexp.MustCompile(`\{([a-zA-Z_][a-zA-Z0-9_]*)\}`)
 		s = argRe.ReplaceAllStringFunc(s, func(match string) string {
 			key := match[1 : len(match)-1]
 
-			// Case 1: Argument is a map (named parameters)
-			if m, ok := arg.(map[string]interface{}); ok {
+			// Accept both named type Vars and raw map[string]interface{}
+			switch m := arg.(type) {
+			case Vars:
 				if val, exists := m[key]; exists {
-					return fmt.Sprintf("%v", val)
+					valStr := fmt.Sprintf("%v", val)
+					if r.escapeHTML {
+						valStr = html.EscapeString(valStr)
+					}
+					return valStr
 				}
 				return match // Keep {placeholder} if not found in map
+			case map[string]interface{}:
+				if val, exists := m[key]; exists {
+					valStr := fmt.Sprintf("%v", val)
+					if r.escapeHTML {
+						valStr = html.EscapeString(valStr)
+					}
+					return valStr
+				}
+				return match // Keep {placeholder} if not found in map
+			default:
+				// Scalar (primitive): replace all placeholders with this value
+				valStr := fmt.Sprintf("%v", arg)
+				if r.escapeHTML {
+					valStr = html.EscapeString(valStr)
+				}
+				return valStr
 			}
-
-			// Case 2: Argument is scalar (primitive)
-			// Replace all placeholders with this value (e.g. for plural count)
-			return fmt.Sprintf("%v", arg)
 		})
 	}
 
@@ -128,7 +168,7 @@ func (rb *RuntimeBlock) ResolveWithLang(arg interface{}, lang string) string {
 	}
 
 	// Check exact number match
-	numStr := fmt.Sprintf("%d", numArg)
+	numStr := strconv.Itoa(numArg)
 	if val, exists := rb.Cases[numStr]; exists {
 		return val
 	}
@@ -152,220 +192,4 @@ func (rb *RuntimeBlock) ResolveWithLang(arg interface{}, lang string) string {
 	}
 
 	return ""
-}
-
-// ============================================================================
-// EXTENDED PLURAL RULES (CLDR)
-// ============================================================================
-
-// PluralRule represents a language's plural categorization function
-type PluralRule func(n int) string
-
-// PluralRules maps language codes to plural rule functions
-var PluralRules = map[string]PluralRule{
-	// Germanic languages
-	"en": pluralEnglish,
-	"de": pluralEnglish,
-	"nl": pluralEnglish,
-	"sv": pluralEnglish,
-	"da": pluralEnglish,
-	"no": pluralEnglish,
-	"nb": pluralEnglish, // Norwegian Bokmål
-	"nn": pluralEnglish, // Norwegian Nynorsk
-
-	// Romance languages
-	"fr": pluralFrench,
-	"es": pluralEnglish,
-	"it": pluralEnglish,
-	"pt": pluralEnglish,
-
-	// Slavic languages
-	"pl": pluralPolish,
-	"ru": pluralRussian,
-	"uk": pluralRussian,
-	"cs": pluralCzech,
-	"sk": pluralCzech,
-	"hr": pluralRussian,
-	"sr": pluralRussian,
-	"be": pluralRussian, // Belarusian
-
-	// Other European
-	"ro": pluralRomanian,
-	"lt": pluralLithuanian,
-
-	// Asian languages (no plural forms)
-	"zh": pluralAsian,
-	"ja": pluralAsian,
-	"ko": pluralAsian,
-	"vi": pluralAsian,
-	"th": pluralAsian,
-	"id": pluralAsian,
-	"ms": pluralAsian, // Malay
-
-	// Semitic
-	"ar": pluralArabic,
-	"he": pluralEnglish,
-
-	// Other
-	"tr": pluralEnglish,
-	"hu": pluralEnglish,
-	"fi": pluralEnglish,
-}
-
-// English: one, other
-func pluralEnglish(n int) string {
-	if n == 1 {
-		return "one"
-	}
-	return "other"
-}
-
-// French: one (0, 1), other
-func pluralFrench(n int) string {
-	if n == 0 || n == 1 {
-		return "one"
-	}
-	return "other"
-}
-
-// Polish: one, few, many
-func pluralPolish(n int) string {
-	if n == 1 {
-		return "one"
-	}
-	mod10 := n % 10
-	mod100 := n % 100
-	if mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14) {
-		return "few"
-	}
-	return "many"
-}
-
-// Russian/Ukrainian: one, few, many
-func pluralRussian(n int) string {
-	mod10 := n % 10
-	mod100 := n % 100
-	if mod10 == 1 && mod100 != 11 {
-		return "one"
-	}
-	if mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14) {
-		return "few"
-	}
-	return "many"
-}
-
-// Czech/Slovak: one, few, other
-func pluralCzech(n int) string {
-	if n == 1 {
-		return "one"
-	}
-	if n >= 2 && n <= 4 {
-		return "few"
-	}
-	return "other"
-}
-
-// Romanian: one, few, other
-func pluralRomanian(n int) string {
-	if n == 1 {
-		return "one"
-	}
-	if n == 0 || (n%100 >= 1 && n%100 <= 19) {
-		return "few"
-	}
-	return "other"
-}
-
-// Lithuanian: one, few, other
-func pluralLithuanian(n int) string {
-	mod10 := n % 10
-	mod100 := n % 100
-	if mod10 == 1 && mod100 != 11 {
-		return "one"
-	}
-	if mod10 >= 2 && mod10 <= 9 && !(mod100 >= 11 && mod100 <= 19) {
-		return "few"
-	}
-	return "other"
-}
-
-// Arabic: zero, one, two, few, many, other
-func pluralArabic(n int) string {
-	if n == 0 {
-		return "zero"
-	}
-	if n == 1 {
-		return "one"
-	}
-	if n == 2 {
-		return "two"
-	}
-	mod100 := n % 100
-	if mod100 >= 3 && mod100 <= 10 {
-		return "few"
-	}
-	if mod100 >= 11 && mod100 <= 99 {
-		return "many"
-	}
-	return "other"
-}
-
-// Asian languages: other only (no plural forms)
-func pluralAsian(n int) string {
-	return "other"
-}
-
-// ResolvePluralCategoryExtended uses the extended plural rules
-func ResolvePluralCategoryExtended(lang string, n int) string {
-	// Normalize language code (take first 2 chars)
-	if len(lang) > 2 {
-		lang = strings.ToLower(lang[:2])
-	} else {
-		lang = strings.ToLower(lang)
-	}
-
-	if rule, exists := PluralRules[lang]; exists {
-		return rule(n)
-	}
-
-	// Default to English rules
-	return pluralEnglish(n)
-}
-
-// ============================================================================
-// SOURCE MAPPING
-// ============================================================================
-
-// SourceLocation represents a position in a source file
-type SourceLocation struct {
-	File   string
-	Line   int
-	Column int
-}
-
-// SourceMap maps keys to their source locations
-type SourceMap map[string]SourceLocation
-
-// BuildSourceMap creates a source map from a parsed program
-func BuildSourceMap(p *Program, filename string) SourceMap {
-	sm := make(SourceMap)
-
-	for _, stmt := range p.Statements {
-		switch s := stmt.(type) {
-		case *AssignStatement:
-			sm[s.Name] = SourceLocation{
-				File:   filename,
-				Line:   s.Token.Line,
-				Column: s.Token.Column,
-			}
-		case *MetadataStatement:
-			sm["@"+s.Key] = SourceLocation{
-				File:   filename,
-				Line:   s.Token.Line,
-				Column: s.Token.Column,
-			}
-		}
-	}
-
-	return sm
 }

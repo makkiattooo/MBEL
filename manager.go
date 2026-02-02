@@ -14,6 +14,7 @@ import (
 type Config struct {
 	DefaultLocale string
 	Watch         bool // Enable hot-reloading (works only with FileRepository)
+	LazyLoad      bool // Enable lazy-loading of runtimes (load on demand)
 }
 
 // Repository defines the interface for loading localization data
@@ -26,14 +27,16 @@ type Repository interface {
 // Manager manages localization data for multiple languages
 type Manager struct {
 	mu          sync.RWMutex
-	runtimes    map[string]*Runtime // lang -> Runtime
+	runtimes    map[string]*Runtime // lang -> Runtime (cached)
 	defaultLang string
 	repo        Repository
+	lazyLoad    bool                              // Load runtimes on demand instead of all upfront
+	allData     map[string]map[string]interface{} // Cached raw data for lazy loading
 }
 
 // NewManager creates a standard file-based localization manager
 func NewManager(rootPath string, cfg Config) (*Manager, error) {
-	repo := &FileRepository{RootPath: rootPath}
+	repo := &FileRepository{RootPath: rootPath, cache: make(map[string]cachedFile)}
 	return NewManagerWithRepo(repo, cfg)
 }
 
@@ -43,6 +46,8 @@ func NewManagerWithRepo(repo Repository, cfg Config) (*Manager, error) {
 		runtimes:    make(map[string]*Runtime),
 		defaultLang: cfg.DefaultLocale,
 		repo:        repo,
+		lazyLoad:    cfg.LazyLoad,
+		allData:     make(map[string]map[string]interface{}),
 	}
 
 	if m.defaultLang == "" {
@@ -70,19 +75,42 @@ func (m *Manager) Load() error {
 		return err
 	}
 
-	// Create Runtimes
-	newRuntimes := make(map[string]*Runtime)
-	for lang, data := range langData {
-		newRuntimes[lang] = NewRuntime(data)
+	// Store raw data for lazy loading
+	m.allData = langData
+
+	// If not lazy-loading, create all runtimes upfront
+	if !m.lazyLoad {
+		newRuntimes := make(map[string]*Runtime)
+		for lang, data := range langData {
+			newRuntimes[lang] = NewRuntime(data)
+		}
+		m.runtimes = newRuntimes
+	} else {
+		// Clear runtimes to force lazy reload
+		m.runtimes = make(map[string]*Runtime)
 	}
 
-	m.runtimes = newRuntimes
 	return nil
 }
 
 // Get retrieves a localized string
 func (m *Manager) Get(lang, key string, args ...interface{}) string {
 	m.mu.RLock()
+
+	// Lazy load runtime if needed
+	if m.lazyLoad {
+		if _, exists := m.runtimes[lang]; !exists {
+			m.mu.RUnlock()
+			// Load runtime lazily
+			m.mu.Lock()
+			if data, exists := m.allData[lang]; exists && m.runtimes[lang] == nil {
+				m.runtimes[lang] = NewRuntime(data)
+			}
+			m.mu.Unlock()
+			m.mu.RLock()
+		}
+	}
+
 	defer m.mu.RUnlock()
 
 	// Try requested language
@@ -153,6 +181,13 @@ func (m *Manager) watchLoop() {
 // FileRepository loads MBEL files from the filesystem
 type FileRepository struct {
 	RootPath string
+	mu       sync.Mutex
+	cache    map[string]cachedFile
+}
+
+type cachedFile struct {
+	modTime time.Time
+	data    map[string]interface{}
 }
 
 // LoadAll scans the directory and compiles all .mbel files
@@ -200,6 +235,26 @@ func (r *FileRepository) LoadAll() (map[string]map[string]interface{}, error) {
 			return fmt.Errorf("failed to read %s: %w", path, err)
 		}
 
+		// Check cache
+		r.mu.Lock()
+		cached, ok := r.cache[path]
+		r.mu.Unlock()
+		if ok && !info.ModTime().After(cached.modTime) {
+			resMap := cached.data
+			if _, exists := langData[lang]; !exists {
+				langData[lang] = make(map[string]interface{})
+				langData[lang]["__meta"] = map[string]string{"lang": lang}
+			}
+			for k, v := range resMap {
+				key := k
+				if namespace != "" && !strings.HasPrefix(k, "__") {
+					key = namespace + "." + k
+				}
+				langData[lang][key] = v
+			}
+			return nil
+		}
+
 		l := NewLexer(string(content))
 		p := NewParser(l)
 		program := p.ParseProgram()
@@ -218,6 +273,11 @@ func (r *FileRepository) LoadAll() (map[string]map[string]interface{}, error) {
 		if !ok {
 			return nil
 		}
+
+		// Store in cache
+		r.mu.Lock()
+		r.cache[path] = cachedFile{modTime: info.ModTime(), data: resMap}
+		r.mu.Unlock()
 
 		if _, exists := langData[lang]; !exists {
 			langData[lang] = make(map[string]interface{})

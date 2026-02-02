@@ -151,7 +151,7 @@ Das Go SDK ist thread-safe und produktionsbereit.
 ### 4.2 Initialisierung
 
 ```go
-import "github.com/yourusername/mbel"
+import "github.com/makkiattooo/mbel"
 
 func init() {
     mbel.Init("./locales", mbel.Config{
